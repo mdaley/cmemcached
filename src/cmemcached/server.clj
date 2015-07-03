@@ -14,6 +14,7 @@
   the incoming part of the duplex stream between client and server."
   [f]
   (fn [s info]
+    (logging/info "New connection - giving it a handler")
     (s/connect
      (s/map f s)
      s)))

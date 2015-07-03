@@ -1,6 +1,6 @@
 (defproject cmemcached "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "A simple in-memory implementation of memcached"
+  :url "http://github.com/mdaley/cmemcached"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[aleph "0.4.0"]

@@ -1,6 +1,22 @@
 (ns cmemcached.handler
-  (:require [byte-streams :as bytes]))
+  (:require [cmemcached
+             [version :as version]]
+            [byte-streams :as bytes]
+            [clojure.string :refer [split trim]]))
+
+(defmulti handle-command
+  (fn [message command] command))
+
+(defmethod handle-command "version"
+  [message action]
+  (version/get-version))
+
+(defmethod handle-command :default
+  [_ _]
+  "ERROR\r\n")
 
 (defn handle-message
-  [b]
-  (println "MESSAGE:" (bytes/to-string b)))
+  [message-bytes]
+  (let [message (bytes/to-string message-bytes)
+        command (trim (first (split message #" ")))]
+    (handle-command message command)))
