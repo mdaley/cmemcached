@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# properties override
+export port="11211"
+
+wait_for_port () {
+    timeout=$1
+
+    for i in `seq 1 $timeout`
+    do
+        if [ `lsof -nt -iTCP:$port -sTCP:LISTEN | wc -l` -gt 0 ]
+        then
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
+server_pid=
+kill_server () {
+    if [ $server_pid ]; then echo "killing $server_pid"; kill $server_pid; fi
+    sleep 1
+}
+
+handle_force_exit () {
+    echo -e "\nHandling interrupt"
+    kill_server
+    exit 1
+}
+
+trap handle_force_exit INT
+
+run_test () {
+  timeout=$1
+  
+  lein trampoline run&
+  server_pid=$!
+
+  echo "PID: $server_pid"
+  echo -e "********\nGiving lein $timeout seconds to build and start cmemcached....\n********"
+
+  if wait_for_port $timeout
+  then
+    lein midje cmemcached.acceptance.*
+    at_res=$?
+
+    kill_server
+    exit $at_res
+  else
+    kill_server
+    echo "cmemcached failed to start within $timeout seconds."
+    exit 1
+  fi
+}
+
+TIMEOUT=30
+
+if [ "$1" != "wait" ]
+then
+  run_test $TIMEOUT
+else
+  lein run
+fi

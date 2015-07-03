@@ -12,4 +12,7 @@
 
   :env {:port 11211}
 
-  :main cmemcached.server)
+  :main cmemcached.server
+
+  :profiles {:dev {:dependencies [[midje "1.6.3"]]
+                   :plugins [[lein-midje "3.1.3"]]}})

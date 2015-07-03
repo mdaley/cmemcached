@@ -6,7 +6,7 @@
             [environ.core :refer [env]]
             [manifold.stream :as s]))
 
-(def ^:private port (env :port 11211))
+(def ^:private port (Integer/valueOf (env :port "11211")))
 
 (defn wrap-stream-handler
   "Returns a function that acts as the stream handler for each connection by a client.
