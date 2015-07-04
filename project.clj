@@ -14,5 +14,6 @@
 
   :main cmemcached.server
 
-  :profiles {:dev {:dependencies [[midje "1.6.3"]]
+  :profiles {:dev {:dependencies [[clojurewerkz/spyglass "1.0.0"]
+                                  [midje "1.6.3"]]
                    :plugins [[lein-midje "3.1.3"]]}})
