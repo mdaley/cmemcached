@@ -8,9 +8,11 @@
                  [ch.qos.logback/logback-classic "1.1.3"]
                  [environ "1.0.0"]
                  [org.clojure/clojure "1.6.0"]
-                 [org.clojure/tools.logging "0.3.1"]]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [pittlcache "0.1.0"]]
 
-  :env {:port 11211}
+  :env {:port 11211
+        :default-ttl 2000}
 
   :main cmemcached.server
 

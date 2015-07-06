@@ -1,11 +1,8 @@
 (ns cmemcached.acceptance.acceptance
-  (:require [clojurewerkz.spyglass.client :as spy]
+  (:require [cmemcached.acceptance.common :refer :all]
+            [clojurewerkz.spyglass.client :as spy]
             [environ.core :refer [env]]
             [midje.sweet :refer :all]))
-
-(def port (env :port 11211))
-
-(def client (spy/text-connection (str "localhost:" port)))
 
 (fact-group
  :acceptance
@@ -14,4 +11,11 @@
        (let [versions (spy/get-versions client)
              version (first (vals versions))]
          (println "VERSION:" version)
-         version => truthy)))
+         version => truthy))
+
+ (fact "simple value can be set and retrieved"
+       (let [key (uuid)
+             value (uuid)
+             ttl 300
+             response (spy/set client key ttl value)]
+         (println "RESPONSE:" @response))))
