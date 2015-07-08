@@ -2,7 +2,8 @@
   (:require [cmemcached
              [version :as version]]
             [byte-streams :as bytes]
-            [clojure.string :refer [split trim]]))
+            [clojure.string :refer [split trim]])
+  (:import [java.nio ByteBuffer]))
 
 (def ^:const max-unsigned-int 4294967295)
 (def ^:const max-unsigned-long (BigInteger. "18446744073709551615"))
@@ -61,7 +62,6 @@
 
 (defmethod handle-command "set"
   [connectionid message cmd]
-  (println "SET")
   (if-let [params (decode-params message cmd)]
     (do
       (set-deferred-cmd! connectionid params "complete-set")
@@ -70,7 +70,6 @@
 
 (defmethod handle-command "cas"
   [connectionid message cmd]
-  (println "CAS")
   (if-let [params (decode-params message cmd)]
     (do
       (set-deferred-cmd! connectionid params "complete-cas")
@@ -79,11 +78,20 @@
 
 (defmethod handle-command "complete-set"
   [connectionid message cmd]
-  (println "COMPLETE-SET" message cmd))
+  (println "COMPLETE-SET" message cmd)
+  (println (count (:data message))))
 
 (defmethod handle-command :default
   [_ _ _]
   "ERROR\r\n")
+
+(defn- remove-crlf
+  [data]
+  "data to be stored always has CRLF (as 4 bytes - backslash, r, backslash n) on the end which doesn't need to be stored"
+  (doto (ByteBuffer/wrap data)
+    (.position 0)
+    (.limit (- (count data) 4))
+    (.slice)))
 
 (defn handle-message
   [message-bytes connectionid info]
@@ -93,7 +101,7 @@
     (if deferred
       (do
         (clear-connection-cmd! connectionid)
-        (handle-command connectionid (assoc (:msg deferred) :data message-bytes) (:cmd deferred)))
+        (handle-command connectionid (assoc (:msg deferred) :data (remove-crlf message-bytes)) (:cmd deferred)))
       (let [message (bytes/to-string message-bytes)
             parts (split message #"\s+")]
         (handle-command connectionid (rest parts) (first parts))))))
