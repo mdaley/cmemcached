@@ -8,7 +8,7 @@
  :acceptance
 
  (fact "version can be retrieved from the one memcache instance"
-       (let [versions (spy/get-versions client)
+       (let [versions (spy/get-versions (client))
              version (first (vals versions))]
          (println "VERSION:" version)
          version => truthy))
@@ -17,5 +17,5 @@
        (let [key (uuid)
              value (uuid)
              ttl 300
-             response (spy/set client key ttl value)]
+             response (spy/set (client) key ttl value)]
          (println "RESPONSE:" @response))))

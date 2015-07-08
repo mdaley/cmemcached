@@ -6,7 +6,7 @@
 
 (def port (env :port 11211))
 
-(def client (spy/text-connection (str "localhost:" port)))
+(def client (memoize #(spy/text-connection (str "localhost:" port))))
 
 (defn uuid
   []

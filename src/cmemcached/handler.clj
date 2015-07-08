@@ -2,8 +2,7 @@
   (:require [cmemcached
              [version :as version]]
             [byte-streams :as bytes]
-            [clojure.string :refer [split trim]])
-  (:import [java.nio ByteBuffer]))
+            [clojure.string :refer [split trim]]))
 
 (def ^:const max-unsigned-int 4294967295)
 (def ^:const max-unsigned-long (BigInteger. "18446744073709551615"))
@@ -79,19 +78,19 @@
 (defmethod handle-command "complete-set"
   [connectionid message cmd]
   (println "COMPLETE-SET" message cmd)
-  (println (count (:data message))))
+  (if (= (count (:data message)) (get-in message [:msg :bytes]))
+    nil
+    "CLIENT_ERROR\r\n")
+  )
 
 (defmethod handle-command :default
   [_ _ _]
   "ERROR\r\n")
 
+;; wish I could do this without copying!
 (defn- remove-crlf
   [data]
-  "data to be stored always has CRLF (as 4 bytes - backslash, r, backslash n) on the end which doesn't need to be stored"
-  (doto (ByteBuffer/wrap data)
-    (.position 0)
-    (.limit (- (count data) 4))
-    (.slice)))
+  (java.util.Arrays/copyOfRange data 0 (- (count data) 5)))
 
 (defn handle-message
   [message-bytes connectionid info]

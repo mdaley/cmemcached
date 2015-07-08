@@ -1,4 +1,4 @@
-(ns jmemcached.persist
+(ns cmemcached.persist
   (:require [environ.core :refer [env]]
             [pittlcache.core :as cache]))
 
