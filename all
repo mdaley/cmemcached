@@ -1,0 +1,26 @@
+#!/bin/bash
+
+exit_if_fail () {
+  if [ $? -ne 0 ]
+  then
+    echo -e "\e[31m"
+    echo ""
+    echo " FAILED!!"
+    echo -e "\e[32m"
+    echo "$1 test failure! What's gone wrong?"
+    echo -e "\e[0m"
+    exit 1
+  fi
+}
+
+echo "Running unit tests..."
+
+lein midje :filter unit
+exit_if_fail Unit
+
+echo "Running acceptance tests..."
+
+./acceptance
+exit_if_fail Acceptance
+
+exit 0

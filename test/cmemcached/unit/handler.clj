@@ -81,9 +81,40 @@
 (fact-group
  :unit
 
- (fact "valid set command and data results in ok response"
+ ;; Hmm... these aren't quite unit tests as they involve the real cache?
+
+ (fact "valid set command and data results in stored response"
        (let [cid (uuid)
-             set-response (handle "set key 0 300 8" :cid cid)
-             data-response (handle "somedata" :cid cid)]
+             key (uuid)
+             set-response (handle (str "set " key " 0 300 8") :cid cid)
+             data-response (handle "somedata\r\n" :cid cid)]
          set-response => nil
-         data-response => "STORED\r\n")))
+         data-response => "STORED\r\n"))
+
+ (fact "valid set command and data results in exists response if the key is already stored"
+       (let [cid (uuid)
+             key (uuid)
+             set-response (handle (str "set " key " 0 300 8") :cid cid)
+             data-response (handle "somedata\r\n" :cid cid)
+             set-response2 (handle (str "set " key " 0 300 8") :cid cid)
+             data-response2 (handle "somedata\r\n" :cid cid)]
+         set-response => nil
+         data-response => "STORED\r\n"
+         set-response2 => nil
+         data-response2 => "EXISTS\r\n"))
+
+ (fact "get command with missing key results in client error response"
+       (handle "get") => "CLIENT_ERROR\r\n")
+
+ (fact "valid get command where item does not exist results in not found response"
+       (handle "get notfound") => "NOT_FOUND\r\n")
+
+ (fact "valid get command retrieves data when it exists"
+       (let [cid (uuid)
+             key (uuid)
+             set-response (handle (str "set " key " 0 300 8") :cid cid)
+             data-response (handle "somedata\r\n" :cid cid)
+             get-response (handle (str "get " key) :cid cid)]
+         set-response => nil
+         data-response => "STORED\r\n"
+         get-response => "somedata\r\n")))

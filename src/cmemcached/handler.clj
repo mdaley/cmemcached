@@ -1,5 +1,6 @@
 (ns cmemcached.handler
   (:require [cmemcached
+             [persist :as persist]
              [version :as version]]
             [byte-streams :as bytes]
             [clojure.string :refer [split trim]]))
@@ -21,7 +22,8 @@
   (println "SET DEFERRED" connectionid message cmd)
   (swap! deferred-cmd
          (fn [curr id]
-           (assoc curr id {:msg {:message message} :cmd cmd}))
+           (assoc curr id {:msg message :cmd cmd})
+           )
          connectionid))
 
 ;; NOTE: exptime is in seconds if it is less than 30 days, otherwise it is a unix timestamp!! Need exact definition.
@@ -67,6 +69,25 @@
       nil)
     "CLIENT_ERROR\r\n"))
 
+(defmethod handle-command "complete-set"
+  [connectionid message cmd]
+  (println "COMPLETE-SET" message cmd)
+  (println "DATA SIZE" (count (:data message)))
+  (if (= (count (:data message)) (:bytes message))
+    (if (= :stored (persist/store (:key message) (:flags message) (* (:exptime message) 1000) (:data message)))
+      "STORED\r\n"
+      "EXISTS\r\n")
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "get"
+  [connectionid message cmd]
+  (println "GET" message cmd)
+  (if-let [key (first message)]
+    (if-let [result (persist/retrieve key)]
+      (str (bytes/to-string (:data result)) "\r\n")
+      "NOT_FOUND\r\n")
+    "CLIENT_ERROR\r\n"))
+
 (defmethod handle-command "cas"
   [connectionid message cmd]
   (if-let [params (decode-params message cmd)]
@@ -75,14 +96,6 @@
       nil)
     "CLIENT_ERROR\r\n"))
 
-(defmethod handle-command "complete-set"
-  [connectionid message cmd]
-  (println "COMPLETE-SET" message cmd)
-  (if (= (count (:data message)) (get-in message [:msg :bytes]))
-    nil
-    "CLIENT_ERROR\r\n")
-  )
-
 (defmethod handle-command :default
   [_ _ _]
   "ERROR\r\n")
@@ -90,7 +103,7 @@
 ;; wish I could do this without copying!
 (defn- remove-crlf
   [data]
-  (java.util.Arrays/copyOfRange data 0 (- (count data) 5)))
+  (java.util.Arrays/copyOfRange data 0 (- (count data) 4)))
 
 (defn handle-message
   [message-bytes connectionid info]
