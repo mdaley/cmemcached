@@ -55,41 +55,48 @@
     (catch NumberFormatException e)))
 
 (defmulti handle-command
-  (fn [connectionid message cmd] cmd))
+  (fn [connectionid msg data cmd] cmd))
 
 (defmethod handle-command "version"
-  [connectionid message cmd]
+  [connectionid msg data cmd]
   (version/get-version))
 
 (defmethod handle-command "set"
-  [connectionid message cmd]
-  (if-let [params (decode-params message cmd)]
-    (do
-      (set-deferred-cmd! connectionid params "complete-set")
-      nil)
+  [connectionid msg data cmd]
+  (println "SET" connectionid msg data cmd)
+  (if-let [params (decode-params msg cmd)]
+    (if (= (count data) (:bytes params))
+      (if (= :stored (persist/store (:key params) (:flags params) (* (:exptime params) 1000) data))
+        "STORED\r\n"
+        "EXISTS\r\n")
+      "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "complete-set"
-  [connectionid message cmd]
-  (println "COMPLETE-SET" message cmd)
-  (println "DATA SIZE" (count (:data message)))
+  [connectionid message data cmd]
   (if (= (count (:data message)) (:bytes message))
     (if (= :stored (persist/store (:key message) (:flags message) (* (:exptime message) 1000) (:data message)))
       "STORED\r\n"
       "EXISTS\r\n")
     "CLIENT_ERROR\r\n"))
 
+(defn- retrieve-item
+  [key]
+  (when-let [result (persist/retrieve key)]
+    (format "VALUE %s %s %s\r\n%s\r\n"
+            key
+            (:flags result)
+            (count (:data result))
+            (:data result))))
+
 (defmethod handle-command "get"
-  [connectionid message cmd]
-  (println "GET" message cmd)
-  (if-let [key (first message)]
-    (if-let [result (persist/retrieve key)]
-      (str (bytes/to-string (:data result)) "\r\n")
-      "NOT_FOUND\r\n")
+  [connectionid message data cmd]
+  (if (seq message)
+    (str (reduce (fn [s key] (str s (retrieve-item key))) "" message) "END\r\n")
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "cas"
-  [connectionid message cmd]
+  [connectionid message data cmd]
   (if-let [params (decode-params message cmd)]
     (do
       (set-deferred-cmd! connectionid params "complete-cas")
@@ -97,7 +104,7 @@
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default
-  [_ _ _]
+  [_ _ _ _]
   "ERROR\r\n")
 
 ;; wish I could do this without copying!
@@ -107,13 +114,11 @@
 
 (defn handle-message
   [message-bytes connectionid info]
-  (println "HANDLE MESSAGE" connectionid info)
-  (let [deferred (get @deferred-cmd connectionid)]
-    (println "DEFERRED" deferred)
-    (if deferred
-      (do
-        (clear-connection-cmd! connectionid)
-        (handle-command connectionid (assoc (:msg deferred) :data (remove-crlf message-bytes)) (:cmd deferred)))
-      (let [message (bytes/to-string message-bytes)
-            parts (split message #"\s+")]
-        (handle-command connectionid (rest parts) (first parts))))))
+  (bytes/print-bytes message-bytes)
+  (let [message (bytes/to-string message-bytes)
+        lines (split message #"\r\n")
+        cmd-and-args (split (first lines) #"\s+")
+        cmd (first cmd-and-args)
+        args (rest cmd-and-args)
+        data (second lines)]
+    (handle-command connectionid args data cmd)))

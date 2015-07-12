@@ -14,8 +14,13 @@
     :exists
     (do
       (swap! cache c/miss key {:value {:data data :flags flags} :ttl ttl})
+      (println "CACHE" (.toString @cache))
       :stored)))
 
 (defn retrieve
   [key]
-  (c/lookup @cache key))
+  (println "RETRIEVE" key)
+  (println "CACHE" (.toString @cache))
+  (let [result (c/lookup @cache key)]
+    (println "RETRIEVED" result)
+    result))
