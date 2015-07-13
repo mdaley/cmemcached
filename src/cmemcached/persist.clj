@@ -1,11 +1,14 @@
 (ns cmemcached.persist
   (:require [clojure.core.cache :as c]
+            [crypto.random :as rnd]
             [environ.core :refer [env]]
             [pittlcache.core :as pc]))
 
 (def ^:private default-ttl (env :default-ttl 60000))
 
 (def cache (atom (pc/pittl-cache-factory {} :ttl default-ttl)))
+
+
 
 (defn store
   [key flags ttl data]

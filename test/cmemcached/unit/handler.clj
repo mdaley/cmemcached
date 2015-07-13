@@ -73,10 +73,7 @@
        (handle "set") => "CLIENT_ERROR\r\n")
 
  (fact "set command where byte count and data size don't match results in error response"
-       (let [cid (uuid)
-             set-response (handle "set key 0 300 8" :cid cid)]
-         set-response => nil
-         (handle "1234567\r\n" :cid cid) => "CLIENT_ERROR\r\n")))
+       (handle "set key 0 300 8\r\n1234567") => "CLIENT_ERROR\r\n"))
 
 (fact-group
  :unit
@@ -84,37 +81,21 @@
  ;; Hmm... these aren't quite unit tests as they involve the real cache?
 
  (fact "valid set command and data results in stored response"
-       (let [cid (uuid)
-             key (uuid)
-             set-response (handle (str "set " key " 0 300 8") :cid cid)
-             data-response (handle "somedata\r\n" :cid cid)]
-         set-response => nil
-         data-response => "STORED\r\n"))
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"))
 
  (fact "valid set command and data results in exists response if the key is already stored"
-       (let [cid (uuid)
-             key (uuid)
-             set-response (handle (str "set " key " 0 300 8") :cid cid)
-             data-response (handle "somedata\r\n" :cid cid)
-             set-response2 (handle (str "set " key " 0 300 8") :cid cid)
-             data-response2 (handle "somedata\r\n" :cid cid)]
-         set-response => nil
-         data-response => "STORED\r\n"
-         set-response2 => nil
-         data-response2 => "EXISTS\r\n"))
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "EXISTS\r\n"))
 
  (fact "get command with missing key results in client error response"
        (handle "get") => "CLIENT_ERROR\r\n")
 
- (fact "valid get command where item does not exist results in not found response"
-       (handle "get notfound") => "NOT_FOUND\r\n")
+ (fact "valid get command where item does not exist results in no values followed by END"
+       (handle "get notfound") => "END\r\n")
 
  (fact "valid get command retrieves data when it exists"
-       (let [cid (uuid)
-             key (uuid)
-             set-response (handle (str "set " key " 0 300 8") :cid cid)
-             data-response (handle "somedata\r\n" :cid cid)
-             get-response (handle (str "get " key) :cid cid)]
-         set-response => nil
-         data-response => "STORED\r\n"
-         get-response => "somedata\r\n")))
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n"))))

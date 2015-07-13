@@ -6,6 +6,7 @@
   :dependencies [[aleph "0.4.0"]
                  [byte-streams "0.2.0"]
                  [ch.qos.logback/logback-classic "1.1.3"]
+                 [crypto-random "1.2.0"]
                  [environ "1.0.0"]
                  [org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.3.1"]
