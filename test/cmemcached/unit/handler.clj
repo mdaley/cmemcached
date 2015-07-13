@@ -98,4 +98,21 @@
  (fact "valid get command retrieves data when it exists"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n"))))
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")))
+
+ (fact "valid get command for multiple items works when all data exists"
+       (let [key1 (uuid)
+             key2 (uuid)
+             key3 (uuid)]
+         (handle (str "set " key1 " 0 300 4\r\npear")) => "STORED\r\n"
+         (handle (str "set " key2 " 0 300 6\r\nbanana")) => "STORED\r\n"
+         (handle (str "set " key3 " 0 300 5\r\napple")) => "STORED\r\n"
+         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key2 " 0 6\r\nbanana\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n")))
+
+ (fact "valid get command for multiple items works when not all data exists"
+       (let [key1 (uuid)
+             key2 (uuid)
+             key3 (uuid)]
+         (handle (str "set " key1 " 0 300 4\r\npear")) => "STORED\r\n"
+         (handle (str "set " key3 " 0 300 5\r\napple")) => "STORED\r\n"
+         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n"))))
