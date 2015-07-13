@@ -115,4 +115,22 @@
              key3 (uuid)]
          (handle (str "set " key1 " 0 300 4\r\npear")) => "STORED\r\n"
          (handle (str "set " key3 " 0 300 5\r\napple")) => "STORED\r\n"
-         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n"))))
+         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n")))
+
+ (fact "valid get command retrieves data when it exists but not after it has timed out"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 1 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (Thread/sleep 1100)
+         (handle (str "get " key)) => "END\r\n"))
+
+ (fact "valid get command for multiple items works when all data exists but after time out one item is gone"
+       (let [key1 (uuid)
+             key2 (uuid)
+             key3 (uuid)]
+         (handle (str "set " key1 " 0 300 4\r\npear")) => "STORED\r\n"
+         (handle (str "set " key2 " 0 1 6\r\nbanana")) => "STORED\r\n"
+         (handle (str "set " key3 " 0 300 5\r\napple")) => "STORED\r\n"
+         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key2 " 0 6\r\nbanana\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n")
+         (Thread/sleep 1100)
+         (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE "key3 " 0 5\r\napple\r\nEND\r\n"))))
