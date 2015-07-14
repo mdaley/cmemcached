@@ -153,7 +153,16 @@
  (fact "valid add command fails if the key already exists"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "add " key " 10 300 6\r\nzzzzzz")) => "EXISTS\r\n")))
+         (handle (str "add " key " 10 300 6\r\nzzzzzz")) => "NOT_STORED\r\n"))
+
+ (fact "valid replace command fails if the key does not exist"
+       (let [key (uuid)]
+         (handle (str "replace " key " 0 300 8\r\nsomedata")) => "NOT_STORED\r\n"))
+
+ (fact "valid replace command succeeds if the key exists"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "replace " key " 10 300 6\r\nzzzzzz")) => "STORED\r\n")))
 
 (fact-group
  :unit

@@ -19,9 +19,16 @@
 (defn add-item
   [key flags ttl data]
   (if (c/has? @cache key)
-    :exists
+    :no-stored
     (do (set-item key flags ttl data)
         :stored)))
+
+(defn replace-item
+  [key flags ttl data]
+  (if (c/has? @cache key)
+    (do (set-item key flags ttl data)
+        :stored)
+    :not-stored))
 
 (defn retrieve-item
   [key]

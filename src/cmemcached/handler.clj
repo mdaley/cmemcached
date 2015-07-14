@@ -58,7 +58,17 @@
     (if (= (count data) (:bytes params))
       (if (= :stored (persist/add-item (:key params) (:flags params) (* (:exptime params) 1000) data))
         "STORED\r\n"
-        "EXISTS\r\n")
+        "NOT_STORED\r\n")
+      "CLIENT_ERROR\r\n")
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "replace"
+  [connectionid msg data cmd]
+  (if-let [params (decode-params msg cmd)]
+    (if (= (count data) (:bytes params))
+      (if (= :stored (persist/replace-item (:key params) (:flags params) (* (:exptime params) 1000) data))
+        "STORED\r\n"
+        "NOT_STORED\r\n")
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
