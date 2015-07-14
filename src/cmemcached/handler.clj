@@ -55,6 +55,7 @@
 
 (defn- retrieve-item
   [key with-cas]
+  (println "RETRIEVE ITEM" key with-cas)
   (when-let [result (persist/retrieve key)]
     (format "VALUE %s %s %s%s\r\n%s\r\n"
             key
@@ -93,4 +94,5 @@
         cmd (first cmd-and-args)
         args (rest cmd-and-args)
         data (second lines)]
+    (println "HANDLE COMMAND" connectionid args data cmd)
     (handle-command connectionid args data cmd)))
