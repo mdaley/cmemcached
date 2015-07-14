@@ -1,5 +1,6 @@
 (ns cmemcached.persist
-  (:require [clojure.core.cache :as c]
+  (:require [cmemcached.util :refer [unsigned-sixty-four-bit-random]]
+            [clojure.core.cache :as c]
             [crypto.random :as rnd]
             [environ.core :refer [env]]
             [pittlcache.core :as pc]))
@@ -8,22 +9,19 @@
 
 (def cache (atom (pc/pittl-cache-factory {} :ttl default-ttl)))
 
-
-
 (defn store
   [key flags ttl data]
   (println "STORE" key flags ttl data)
   (if (c/has? @cache key)
     :exists
     (do
-      (swap! cache c/miss key {:value {:data data :flags flags} :ttl ttl})
-      (println "CACHE" (.toString @cache))
+      (swap! cache c/miss key {:value {:data data
+                                       :flags flags
+                                       :cas (unsigned-sixty-four-bit-random)}
+                               :ttl ttl})
       :stored)))
 
 (defn retrieve
   [key]
-  (println "RETRIEVE" key)
-  (println "CACHE" (.toString @cache))
   (let [result (c/lookup @cache key)]
-    (println "RETRIEVED" result)
     result))

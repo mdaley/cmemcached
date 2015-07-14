@@ -23,7 +23,7 @@
           noreply (nth params (if (= "cas" cmd) 5 4) nil)]
       (when (and (<= 0 flags max-unsigned-int)
                  (<= 0 exptime)
-                 (<= 1 bytes)
+                 (<= 0 bytes)
                  (or (nil? cas-unique) (<= 0 cas-unique max-unsigned-long))
                  (or (nil? noreply) (= "noreply" noreply)))
         (merge {:key key
@@ -54,19 +54,25 @@
     "CLIENT_ERROR\r\n"))
 
 (defn- retrieve-item
-  [key]
+  [key with-cas]
   (when-let [result (persist/retrieve key)]
-    (format "VALUE %s %s %s\r\n%s\r\n"
+    (format "VALUE %s %s %s%s\r\n%s\r\n"
             key
             (:flags result)
             (count (:data result))
-            (:data result))))
+            (if with-cas (str " " (:cas result)) "")
+            (str (:data result)))))
 
 (defmethod handle-command "get"
   [connectionid message _ _]
   (if (seq message)
-    (str (reduce (fn [s key] (str s (retrieve-item key))) "" message) "END\r\n")
+    (str (reduce (fn [s key] (str s (retrieve-item key false))) "" message) "END\r\n")
     "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "gets"
+  [connectionid message _ _]
+  (if (seq message)
+    (str (reduce (fn [s key] (str s (retrieve-item key true))) "" message) "END\r\n")))
 
 (defmethod handle-command "cas"
   [connectionid message data cmd]

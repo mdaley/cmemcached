@@ -43,7 +43,7 @@
        (handle "set key 0 300 a") => "CLIENT_ERROR\r\n")
 
  (fact "set command with bytes count below zero results in error response"
-       (handle "set key 0 300 0") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 300 -1") => "CLIENT_ERROR\r\n")
 
  (fact "set command with invalid cas-unique results in error response"
        (handle "cas key 0 300 8 a") => "CLIENT_ERROR\r\n")
@@ -88,6 +88,11 @@
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "EXISTS\r\n"))
+
+ (fact "zero sized data can be stored and retrieved"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 0\r\n")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 0\r\n\r\nEND\r\n")))
 
  (fact "get command with missing key results in client error response"
        (handle "get") => "CLIENT_ERROR\r\n")
@@ -134,3 +139,11 @@
          (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE " key2 " 0 6\r\nbanana\r\nVALUE " key3 " 0 5\r\napple\r\nEND\r\n")
          (Thread/sleep 1100)
          (handle (str "get " key1 " " key2 " " key3)) => (str "VALUE " key1 " 0 4\r\npear\r\nVALUE "key3 " 0 5\r\napple\r\nEND\r\n"))))
+
+(fact-group
+ :unit
+
+ (fact "valid gets command retrieves data with cas"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "gets " key)) => (re-pattern (str "VALUE " key " 0 8 [0-9].+\r\nsomedata\r\nEND\r\n")))))
