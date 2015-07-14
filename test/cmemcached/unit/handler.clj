@@ -84,11 +84,6 @@
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"))
 
- (fact "valid set command and data results in exists response if the key is already stored"
-       (let [key (uuid)]
-         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "set " key " 0 300 8\r\nsomedata")) => "EXISTS\r\n"))
-
  (fact "zero sized data can be stored and retrieved"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 0\r\n")) => "STORED\r\n"
@@ -104,6 +99,12 @@
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
          (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")))
+
+ (fact "valid set command with same key overrides previous set"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "set " key " 10 300 6\r\nzzzzzz")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 10 6\r\nzzzzzz\r\nEND\r\n")))
 
  (fact "valid get command for multiple items works when all data exists"
        (let [key1 (uuid)

@@ -47,9 +47,8 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (if (= :stored (persist/store (:key params) (:flags params) (* (:exptime params) 1000) data))
-        "STORED\r\n"
-        "EXISTS\r\n")
+      (do (persist/set (:key params) (:flags params) (* (:exptime params) 1000) data)
+          "STORED\r\n")
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
