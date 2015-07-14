@@ -9,14 +9,21 @@
 
 (def cache (atom (pc/pittl-cache-factory {} :ttl default-ttl)))
 
-(defn set
+(defn set-item
   [key flags ttl data]
   (swap! cache c/miss key {:value {:data data
                                    :flags flags
                                    :cas (unsigned-sixty-four-bit-random)}
                            :ttl ttl}))
 
-(defn retrieve
+(defn add-item
+  [key flags ttl data]
+  (if (c/has? @cache key)
+    :exists
+    (do (set-item key flags ttl data)
+        :stored)))
+
+(defn retrieve-item
   [key]
   (let [result (c/lookup @cache key)]
     result))

@@ -47,15 +47,25 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (do (persist/set (:key params) (:flags params) (* (:exptime params) 1000) data)
+      (do (persist/set-item (:key params) (:flags params) (* (:exptime params) 1000) data)
           "STORED\r\n")
+      "CLIENT_ERROR\r\n")
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "add"
+  [connectionid msg data cmd]
+  (if-let [params (decode-params msg cmd)]
+    (if (= (count data) (:bytes params))
+      (if (= :stored (persist/add-item (:key params) (:flags params) (* (:exptime params) 1000) data))
+        "STORED\r\n"
+        "EXISTS\r\n")
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
 (defn- retrieve-item
   [key with-cas]
   (println "RETRIEVE ITEM" key with-cas)
-  (when-let [result (persist/retrieve key)]
+  (when-let [result (persist/retrieve-item key)]
     (format "VALUE %s %s %s%s\r\n%s\r\n"
             key
             (:flags result)

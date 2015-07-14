@@ -144,6 +144,20 @@
 (fact-group
  :unit
 
+ (fact "valid add command adds data that can then be retrieved"
+       (let [key (uuid)]
+         (handle (str "add " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         ))
+
+ (fact "valid add command fails if the key already exists"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "add " key " 10 300 6\r\nzzzzzz")) => "EXISTS\r\n")))
+
+(fact-group
+ :unit
+
  (fact "valid gets command retrieves data with cas"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
