@@ -167,6 +167,22 @@
 (fact-group
  :unit
 
+ (fact "append updates data correctly"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "append " key " 10 300 6\r\nzzzzzz")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 14\r\nsomedatazzzzzz\r\nEND\r\n")))
+
+ (fact "prepend updates data correctly"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "prepend " key " 10 300 6\r\nzzzzzz")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 14\r\nzzzzzzsomedata\r\nEND\r\n")))
+ )
+
+(fact-group
+ :unit
+
  (fact "valid gets command retrieves data with cas"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"

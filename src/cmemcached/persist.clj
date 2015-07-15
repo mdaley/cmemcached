@@ -19,7 +19,7 @@
 (defn add-item
   [key flags ttl data]
   (if (c/has? @cache key)
-    :no-stored
+    :not-stored
     (do (set-item key flags ttl data)
         :stored)))
 
@@ -29,6 +29,18 @@
     (do (set-item key flags ttl data)
         :stored)
     :not-stored))
+
+  (defn alter-item
+    [key data append?]
+    (if-let [existing (c/lookup @cache key)]
+      (do (swap! cache c/miss key {:value {:data (if append?
+                                                   (str (:data existing) data)
+                                                   (str data (:data existing)))
+                                           :flags (:flags existing)
+                                           :cas (unsigned-sixty-four-bit-random)}
+                                   :ttl (:ttl existing)})
+          :stored)
+      :not-stored))
 
 (defn retrieve-item
   [key]

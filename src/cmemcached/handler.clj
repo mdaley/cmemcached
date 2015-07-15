@@ -72,6 +72,26 @@
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
+(defmethod handle-command "append"
+  [connectionid msg data cmd]
+  (if-let [params (decode-params msg cmd)]
+    (if (= (count data) (:bytes params))
+      (if (= :stored (persist/alter-item (:key params) data true))
+        "STORED\r\n"
+        "NOT_STORED\r\n")
+      "CLIENT_ERROR\r\n")
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "prepend"
+  [connectionid msg data cmd]
+  (if-let [params (decode-params msg cmd)]
+    (if (= (count data) (:bytes params))
+      (if (= :stored (persist/alter-item (:key params) data false))
+        "STORED\r\n"
+        "NOT_STORED\r\n")
+      "CLIENT_ERROR\r\n")
+    "CLIENT_ERROR\r\n"))
+
 (defn- retrieve-item
   [key with-cas]
   (println "RETRIEVE ITEM" key with-cas)
