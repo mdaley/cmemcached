@@ -12,7 +12,7 @@
  (fact "version can be retrieved from the one memcache instance"
        (let [versions (spy/get-versions (client))
              version (first (vals versions))]
-         version => truthy))
+         version => #"[0-9]+\.[0-9]+\.[0-9]+\-SNAPSHOT"))
 
  (fact "getting a value that doesn't exist results in no value response"
        (spy/get (client) "notfound") => nil)
@@ -23,6 +23,15 @@
              ttl 300]
          (spy/set (client) key ttl value)
          (spy/get (client) key) => value))
+
+ (fact "simple value can be set and retrieved but then it expires and can't be retrieved"
+       (let [key (uuid)
+             value (uuid)
+             ttl 1]
+         (spy/set (client) key ttl value)
+         (spy/get (client) key) => value
+         (Thread/sleep 1100)
+         (spy/get (client) key) => nil))
 
  (fact "several values can be set and all retrieved at the same time"
        (let [key1 (uuid)

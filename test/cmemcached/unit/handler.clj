@@ -183,6 +183,19 @@
 (fact-group
  :unit
 
+ (fact "deleting an item that does not exist results in not found"
+       (handle "delete doesnotexist") => "NOT_FOUND\r\n")
+
+  (fact "deleting an item that does exist works; and then it can't be found any more"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (handle (str "delete " key)) => "DELETED\r\n"
+         (handle (str "get " key)) => "END\r\n")))
+
+(fact-group
+ :unit
+
  (fact "valid gets command retrieves data with cas"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"

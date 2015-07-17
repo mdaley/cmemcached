@@ -36,6 +36,17 @@
                  {:noreply true}))))
     (catch NumberFormatException e)))
 
+(defn- retrieve-item
+  [key with-cas]
+  (println "RETRIEVE ITEM" key with-cas)
+  (when-let [result (persist/retrieve-item key)]
+    (format "VALUE %s %s %s%s\r\n%s\r\n"
+            key
+            (:flags result)
+            (count (:data result))
+            (if with-cas (str " " (:cas result)) "")
+            (str (:data result)))))
+
 (defmulti handle-command
   (fn [connectionid msg data cmd] cmd))
 
@@ -92,17 +103,6 @@
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
-(defn- retrieve-item
-  [key with-cas]
-  (println "RETRIEVE ITEM" key with-cas)
-  (when-let [result (persist/retrieve-item key)]
-    (format "VALUE %s %s %s%s\r\n%s\r\n"
-            key
-            (:flags result)
-            (count (:data result))
-            (if with-cas (str " " (:cas result)) "")
-            (str (:data result)))))
-
 (defmethod handle-command "get"
   [connectionid message _ _]
   (if (seq message)
@@ -113,6 +113,13 @@
   [connectionid message _ _]
   (if (seq message)
     (str (reduce (fn [s key] (str s (retrieve-item key true))) "" message) "END\r\n")))
+
+(defmethod handle-command "delete"
+  [connectionid message _ _]
+  (println "MESSAGE" message)
+  (if (= :deleted (persist/delete-item (first message)))
+      "DELETED\r\n"
+      "NOT_FOUND\r\n"))
 
 (defmethod handle-command "cas"
   [connectionid message data cmd]

@@ -46,3 +46,10 @@
   [key]
   (let [result (c/lookup @cache key)]
     result))
+
+(defn delete-item
+  [key]
+  (if (c/has? @cache key)
+    (do (swap! cache c/evict key)
+        :deleted)
+    :not-found))
