@@ -124,7 +124,11 @@
 (defmethod handle-command "cas"
   [connectionid message data cmd]
   (if-let [params (decode-params message cmd)]
-    "DO SOMETHING\r\n"
+    (case (persist/check-and-set (:key params) (:flags params) (* (:exptime params) 1000) (:cas-unique params) data)
+      :stored "STORED\r\n"
+      :exists "EXISTS\r\n"
+      :not-found "NOT_FOUND\r\n"
+      "SERVER_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default

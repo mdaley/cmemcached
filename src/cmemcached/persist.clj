@@ -16,6 +16,19 @@
                                    :cas (unsigned-sixty-four-bit-random)}
                            :ttl ttl}))
 
+(defn check-and-set
+  [key flags ttl cas-unique data]
+  (println "cas-unique" cas-unique)
+  (if-let [existing (c/lookup @cache key)]
+    (if (= cas-unique (:cas existing))
+      (do (swap! cache c/miss key {:value {:data data
+                                           :flags flags
+                                           :cas (unsigned-sixty-four-bit-random)}
+                                   :ttl ttl})
+          :stored)
+      :exists)
+    :not-found))
+
 (defn add-item
   [key flags ttl data]
   (if (c/has? @cache key)

@@ -1,5 +1,6 @@
 (ns cmemcached.unit.handler
-  (:require [cmemcached.handler :refer :all]
+  (:require [clojure.string :refer [split]]
+            [cmemcached.handler :refer :all]
             [byte-streams :as bytes]
             [midje.sweet :refer :all])
   (:import [java.util UUID]))
@@ -199,4 +200,15 @@
  (fact "valid gets command retrieves data with cas"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "gets " key)) => (re-pattern (str "VALUE " key " 0 8 [0-9].+\r\nsomedata\r\nEND\r\n")))))
+         (handle (str "gets " key)) => (re-pattern (str "VALUE " key " 0 8 [0-9].+\r\nsomedata\r\nEND\r\n"))))
+
+ (fact "check and set with correct cas value succeeds (expiry and flags are updated)"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (let [v (handle (str "gets " key))
+               cas (nth (split v #"\s+") 4)]
+           (handle (str "cas " key " 10 1 6 " cas "\r\nzzzzzz")) => "STORED\r\n"
+           (handle (str "get " key)) => (str "VALUE " key " 10 6\r\nzzzzzz\r\nEND\r\n")
+           (Thread/sleep 1100)
+           (handle (str "get " key)) => "END\r\n")))
+ )

@@ -6,6 +6,10 @@ A memcached implementation written in clojure. Once it's finished that is...
 
 TBA
 
+## Issues / Questions
+
+ - Do append and prepend reset the expiry time or not? (i.e. like touch does).
+
 ## License
 
 Copyright © 2015 Matthew Daley
