@@ -1,13 +1,11 @@
 (ns cmemcached.handler
   (:require [cmemcached
              [persist :as persist]
-             [version :as version]]
+             [version :as version]
+             [util :refer [max-unsigned-int max-unsigned-long]]]
             [byte-streams :as bytes]
             [clojure.string :refer [split trim]]
             [clojure.tools.logging :as logging]))
-
-(def ^:const max-unsigned-int 4294967295N)
-(def ^:const max-unsigned-long 18446744073709551615N)
 
 ;; NOTE: exptime is in seconds if it is less than 30 days, otherwise it is a unix timestamp!! Need exact definition.
 
@@ -37,9 +35,22 @@
                  {:noreply true}))))
     (catch NumberFormatException e)))
 
+(defn- decode-num-params
+  [params]
+  (try
+    (let [key (first params)
+          value (bigint (second params))
+          noreply (nth params 2 nil)]
+      (when (and (<= 0 value max-unsigned-long)
+                 (or (nil? noreply) (= "noreply" noreply)))
+        (merge {:key key
+                :value value}
+               (when noreply
+                 {:noreply true}))))
+    (catch NumberFormatException e)))
+
 (defn- retrieve-item
   [key with-cas]
-  (println "RETRIEVE ITEM" key with-cas)
   (when-let [result (persist/retrieve-item key)]
     (format "VALUE %s %s %s%s\r\n%s\r\n"
             key
@@ -142,6 +153,30 @@
         :exists "EXISTS\r\n"
         :not-found "NOT_FOUND\r\n"
         "SERVER_ERROR invalid response from check-and-set\r\n"))
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "incr"
+  [connectionid message data cmd]
+  (if-let [params (decode-num-params message)]
+    (with-hide-reply (:noreply params)
+      (let [[result value] (persist/increment (:key params) (:value params))]
+        (case result
+          :stored (str value "\r\n")
+          :not-found "NOT_FOUND\r\n"
+          :nan "CLIENT_ERROR stored value not a number\r\n"
+          "SERVER_ERROR invalid response from increment\r\n")))
+    "CLIENT_ERROR\r\n"))
+
+(defmethod handle-command "decr"
+  [connectionid message data cmd]
+  (if-let [params (decode-num-params message)]
+    (with-hide-reply (:noreply params)
+      (let [[result value] (persist/decrement (:key params) (:value params))]
+        (case result
+          :stored (str value "\r\n")
+          :not-found "NOT_FOUND\r\n"
+          :nan "CLIENT_ERROR stored value not a number\r\n"
+          "SERVER_ERROR invalid response from increment\r\n")))
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default

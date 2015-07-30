@@ -305,3 +305,70 @@
                cas (nth (split v #"\s+") 4)]
            (handle (str "cas " key " 10 1 6 " cas " noreply\r\nzzzzzz")) => nil
            (handle (str "get " key)) => (str "VALUE " key " 10 6\r\nzzzzzz\r\nEND\r\n")))))
+
+ (fact-group
+  :unit :incr-and-decr
+
+  (fact "increment by 1 results in incremented value being returned"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "incr " key " 1")) => "1235\r\n"))
+
+  (fact "increment by number results in incremented value being returned"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "incr " key " 10000")) => "11234\r\n"))
+
+  (fact "increment by 1 when at max unsigned 64 bit number results in wrap around to zero (strangeness of the memcached spec!)"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 20\r\n18446744073709551615")) => "STORED\r\n"
+         (handle (str "incr " key " 1")) => "0\r\n"))
+
+  (fact "increment by number when close to max unsigned 64 bit number results in correct wrap around"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 20\r\n18446744073709551610")) => "STORED\r\n"
+         (handle (str "incr " key " 10")) => "4\r\n"))
+
+  (fact "decrement by 1 results in decremented value being returned"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "decr " key " 1")) => "1233\r\n"))
+
+  (fact "decrement by number results in decremented value being returned"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "decr " key " 200")) => "1034\r\n"))
+
+  (fact "decrement to below zero results in zero being returned (that's the way memcached wants it!)"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "decr " key " 1235")) => "0\r\n"))
+
+  (fact "decrement works at max limit"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 20\r\n18446744073709551615")) => "STORED\r\n"
+         (handle (str "decr " key " 1")) => "18446744073709551614\r\n"))
+
+  (fact "decrement fails when stored value is not a number"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n12A4")) => "STORED\r\n"
+         (handle (str "decr " key " 1")) => "CLIENT_ERROR stored value not a number\r\n"))
+
+  (fact "decrement returns client error when the decrement value is not a number"
+        (handle (str "decr key A")) => "CLIENT_ERROR\r\n")
+
+  (fact "increment fails when stored value is not a number"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n12A4")) => "STORED\r\n"
+         (handle (str "incr " key " 1")) => "CLIENT_ERROR stored value not a number\r\n"))
+
+  (fact "increment returns client error when the decrement value is not a number"
+        (handle (str "incr key A")) => "CLIENT_ERROR\r\n")
+
+  (fact "decrement fails when stored value can't be found"
+        (let [key (uuid)]
+          (handle (str "decr " key " 1")) => "NOT_FOUND\r\n"))
+
+  (fact "increment fails when stored value can't be found"
+        (let [key (uuid)]
+         (handle (str "incr " key " 1")) => "NOT_FOUND\r\n")))
