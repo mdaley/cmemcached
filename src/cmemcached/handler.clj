@@ -47,6 +47,12 @@
             (if with-cas (str " " (:cas result)) "")
             (str (:data result)))))
 
+(defmacro with-hide-reply
+  [noreply & body]
+  `(if ~noreply
+     (do ~@body nil)
+     ~@body))
+
 (defmulti handle-command
   (fn [connectionid msg data cmd] cmd))
 
@@ -58,8 +64,9 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (do (persist/set-item (:key params) (:flags params) (* (:exptime params) 1000) data)
-          "STORED\r\n")
+      (with-hide-reply (:noreply params)
+        (do (persist/set-item (:key params) (:flags params) (* (:exptime params) 1000) data)
+            "STORED\r\n"))
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
@@ -67,9 +74,10 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (if (= :stored (persist/add-item (:key params) (:flags params) (* (:exptime params) 1000) data))
-        "STORED\r\n"
-        "NOT_STORED\r\n")
+      (with-hide-reply (:noreply params)
+        (if (= :stored (persist/add-item (:key params) (:flags params) (* (:exptime params) 1000) data))
+          "STORED\r\n"
+          "NOT_STORED\r\n"))
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
@@ -77,9 +85,10 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (if (= :stored (persist/replace-item (:key params) (:flags params) (* (:exptime params) 1000) data))
-        "STORED\r\n"
-        "NOT_STORED\r\n")
+      (with-hide-reply (:noreply params)
+        (if (= :stored (persist/replace-item (:key params) (:flags params) (* (:exptime params) 1000) data))
+          "STORED\r\n"
+          "NOT_STORED\r\n"))
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
@@ -87,9 +96,10 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (if (= :stored (persist/alter-item (:key params) data true))
-        "STORED\r\n"
-        "NOT_STORED\r\n")
+      (with-hide-reply (:noreply params)
+        (if (= :stored (persist/alter-item (:key params) data true))
+          "STORED\r\n"
+          "NOT_STORED\r\n"))
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
@@ -97,9 +107,10 @@
   [connectionid msg data cmd]
   (if-let [params (decode-params msg cmd)]
     (if (= (count data) (:bytes params))
-      (if (= :stored (persist/alter-item (:key params) data false))
-        "STORED\r\n"
-        "NOT_STORED\r\n")
+      (with-hide-reply (:noreply params)
+        (if (= :stored (persist/alter-item (:key params) data false))
+          "STORED\r\n"
+          "NOT_STORED\r\n"))
       "CLIENT_ERROR\r\n")
     "CLIENT_ERROR\r\n"))
 
@@ -124,11 +135,12 @@
 (defmethod handle-command "cas"
   [connectionid message data cmd]
   (if-let [params (decode-params message cmd)]
-    (case (persist/check-and-set (:key params) (:flags params) (* (:exptime params) 1000) (:cas-unique params) data)
-      :stored "STORED\r\n"
-      :exists "EXISTS\r\n"
-      :not-found "NOT_FOUND\r\n"
-      "SERVER_ERROR\r\n")
+    (with-hide-reply (:noreply params)
+      (case (persist/check-and-set (:key params) (:flags params) (* (:exptime params) 1000) (:cas-unique params) data)
+        :stored "STORED\r\n"
+        :exists "EXISTS\r\n"
+        :not-found "NOT_FOUND\r\n"
+        "SERVER_ERROR\r\n"))
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default
