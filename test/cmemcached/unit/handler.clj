@@ -17,6 +17,13 @@
        (handle "version") => #"VERSION.*"))
 
 (fact-group
+ :unit :server
+ (fact "handler exception results in server error response"
+       (handle "set key 0 300 8/r/nsomedata/r/n") => "SERVER_ERROR error message\r\n"
+       (provided
+        (handle-command anything anything anything anything) =throws=> (Exception. "error message"))))
+
+(fact-group
  :unit :invalid-commands
 
  (fact "invalid command results in error response"

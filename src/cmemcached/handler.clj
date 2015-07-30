@@ -3,7 +3,8 @@
              [persist :as persist]
              [version :as version]]
             [byte-streams :as bytes]
-            [clojure.string :refer [split trim]]))
+            [clojure.string :refer [split trim]]
+            [clojure.tools.logging :as logging]))
 
 (def ^:const max-unsigned-int 4294967295N)
 (def ^:const max-unsigned-long 18446744073709551615N)
@@ -140,7 +141,7 @@
         :stored "STORED\r\n"
         :exists "EXISTS\r\n"
         :not-found "NOT_FOUND\r\n"
-        "SERVER_ERROR\r\n"))
+        "SERVER_ERROR invalid response from check-and-set\r\n"))
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default
@@ -149,12 +150,15 @@
 
 (defn handle-message
   [message-bytes connectionid info]
-  (bytes/print-bytes message-bytes)
-  (let [message (bytes/to-string message-bytes)
-        lines (split message #"\r\n")
-        cmd-and-args (when (first lines) (split (first lines) #"\s+"))
-        cmd (first cmd-and-args)
-        args (rest cmd-and-args)
-        data (second lines)]
-    (println "HANDLE COMMAND" connectionid args data cmd)
-    (handle-command connectionid args data cmd)))
+  (try
+    (bytes/print-bytes message-bytes)
+    (let [message (bytes/to-string message-bytes)
+          lines (split message #"\r\n")
+          cmd-and-args (when (first lines) (split (first lines) #"\s+"))
+          cmd (first cmd-and-args)
+          args (rest cmd-and-args)
+          data (second lines)]
+      (handle-command connectionid args data cmd))
+    (catch Exception e
+      (logging/error e)
+      (str "SERVER_ERROR " (.getMessage e) "\r\n"))))
