@@ -37,4 +37,4 @@
 
 (defn -main [& args]
   (logging/info "Service starting")
-  (start-server (wrap-stream-handler handler/handle-message) port))
+  (start-server (wrap-stream-handler handler/handle-incoming) port))

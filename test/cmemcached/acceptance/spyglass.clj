@@ -33,7 +33,7 @@
          (Thread/sleep 1100)
          (spy/get (client) key) => nil))
 
- (fact "several values can be set and all retrieved at the same time"
+ (fact "several values can be set and all retrieved at the same time using the same client"
        (let [key1 (uuid)
              value1 (uuid)
              key2 (uuid)
@@ -44,6 +44,5 @@
          (spy/set c key1 300 value1)
          (spy/set c key2 300 value2)
          (spy/set c key3 300 value3)
-         (Thread/sleep 500)
-         (let [result (spy/get-multi (client) [key1 key2 key3])]
+         (let [result (spy/get-multi c [key1 key2 key3])]
            result => {key1 value1 key2 value2 key3 value3}))))

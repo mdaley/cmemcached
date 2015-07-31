@@ -9,7 +9,7 @@
 
 (defn- handle
   [message & {:keys [cid info] :or {cid (uuid) info {}}}]
-  (handle-message (.getBytes (str message "\r\n")) cid info))
+  (handle-incoming (.getBytes (str message "\r\n")) cid info))
 
 (fact-group
  :unit :version
@@ -19,7 +19,7 @@
 (fact-group
  :unit :server
  (fact "handler exception results in server error response"
-       (handle "set key 0 300 8/r/nsomedata/r/n") => "SERVER_ERROR error message\r\n"
+       (handle "set key 0 300 8\r\nsomedata") => "SERVER_ERROR error message\r\n"
        (provided
         (handle-command anything anything anything anything) =throws=> (Exception. "error message"))))
 
@@ -33,52 +33,52 @@
        (handle "") => "ERROR\r\n")
 
  (fact "set command with invalid flags results in error response"
-       (handle "set key a 300 8") => "CLIENT_ERROR\r\n")
+       (handle "set key a 300 8\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with flags below zero results in error response"
-       (handle "set key -1 300 8") => "CLIENT_ERROR\r\n")
+       (handle "set key -1 300 8\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with flags above max unsigned int results in error response"
-       (handle "set key 4294967296 300 8") => "CLIENT_ERROR\r\n")
+       (handle "set key 4294967296 300 8\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with invalid expiry results in error response"
-       (handle "set key 0 a 8") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 a 8\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with expiry below zero results in error response"
-       (handle "set key 0 -1 8") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 -1 8\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with invalid bytes count results in error response"
-       (handle "set key 0 300 a") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 300 a\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with bytes count below zero results in error response"
-       (handle "set key 0 300 -1") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 300 -1\r\nsomedata") => "CLIENT_ERROR\r\n")
 
- (fact "set command with invalid cas-unique results in error response"
-       (handle "cas key 0 300 8 a") => "CLIENT_ERROR\r\n")
+ (fact "check and set command with invalid cas-unique results in error response"
+       (handle "cas key 0 300 8 a\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with cas-unique below zero results in error response"
-       (handle "cas key 0 300 8 -1") => "CLIENT_ERROR\r\n")
+       (handle "cas key 0 300 8 -1\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with cas-unique above max unsigned long results in error response"
-       (handle "cas key 0 300 8 18446744073709551616") => "CLIENT_ERROR\r\n")
+       (handle "cas key 0 300 8 18446744073709551616\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command with invalid noreply value results in error response"
-       (handle "set key 0 300 8 norep_y") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 300 8 norep_y\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "cas command with invalid noreply value results in error response"
-       (handle "cas key 0 300 8 0 n_reply") => "CLIENT_ERROR\r\n")
+       (handle "cas key 0 300 8 0 n_reply\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "incomplete command results in error response"
-       (handle "set key 0 300") => "CLIENT_ERROR\r\n")
+       (handle "set key 0 300\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "really incomplete command results in error response"
-       (handle "set key 0") => "CLIENT_ERROR\r\n")
+       (handle "set key 0\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "really, really incomplete command results in error response"
-       (handle "set key") => "CLIENT_ERROR\r\n")
+       (handle "set key\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "really, really, really incomplete command results in error response"
-       (handle "set") => "CLIENT_ERROR\r\n")
+       (handle "set\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "set command where byte count and data size don't match results in error response"
        (handle "set key 0 300 8\r\n1234567") => "CLIENT_ERROR\r\n")
@@ -87,7 +87,7 @@
        (handle "set key 0 300 8 noreply\r\n1234567") => "CLIENT_ERROR\r\n")
 
  (fact "set command with cas-unique above max unsigned long results in error response even when noreply is present"
-       (handle "cas key 0 300 8 18446744073709551616 noreply") => "CLIENT_ERROR\r\n")
+       (handle "cas key 0 300 8 18446744073709551616 noreply\r\nsomedata") => "CLIENT_ERROR\r\n")
 
  (fact "invalid add command with noreply results in error reponse even when noreply is present"
        (handle (str "add key 0 300 -1 noreply\r\nsomedata")) => "CLIENT_ERROR\r\n")
@@ -256,54 +256,54 @@
 
  (fact "set with noreply really does store data even though there is no response"
        (let [key (uuid)]
-         (handle (str "set " key " 0 300 8 noreply\r\nsomedata")) => nil
+         (handle (str "set " key " 0 300 8 noreply\r\nsomedata")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")))
 
  (fact "add with noreply adds data that can then be retrieved even though there is no response"
        (let [key (uuid)]
-         (handle (str "add " key " 0 300 8 noreply\r\nsomedata")) => nil
+         (handle (str "add " key " 0 300 8 noreply\r\nsomedata")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")))
 
  (fact "valid replace command with noreply succeeds even though there is no response"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "replace " key " 10 300 6 noreply\r\nzzzzzz")) => nil
+         (handle (str "replace " key " 10 300 6 noreply\r\nzzzzzz")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 10 6\r\nzzzzzz\r\nEND\r\n")))
 
  (fact "valid add command with noreply for an non-existent key gives no response"
        (let [key (uuid)]
-         (handle (str "add " key " 10 300 6 noreply\r\nzzzzzz")) => nil))
+         (handle (str "add " key " 10 300 6 noreply\r\nzzzzzz")) => ""))
 
  (fact "valid replace command with noreply for an non-existent key gives no response"
        (let [key (uuid)]
-         (handle (str "replace " key " 10 300 6 noreply\r\nzzzzzz")) => nil))
+         (handle (str "replace " key " 10 300 6 noreply\r\nzzzzzz")) => ""))
 
  (fact "append with noreply updates data correctly even though there is no response"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "append " key " 10 300 6 noreply\r\nzzzzzz")) => nil
+         (handle (str "append " key " 10 300 6 noreply\r\nzzzzzz")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 14\r\nsomedatazzzzzz\r\nEND\r\n")))
 
  (fact "prepend with noreply updates data correctly even though there is no response"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
-         (handle (str "prepend " key " 10 300 6 noreply\r\nzzzzzz")) => nil
+         (handle (str "prepend " key " 10 300 6 noreply\r\nzzzzzz")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 14\r\nzzzzzzsomedata\r\nEND\r\n")))
 
  (fact "valid append command with noreply for an non-existent key gives no response"
        (let [key (uuid)]
-         (handle (str "append " key " 10 300 6 noreply\r\nzzzzzz")) => nil))
+         (handle (str "append " key " 10 300 6 noreply\r\nzzzzzz")) => ""))
 
  (fact "valid prepend command with noreply for an non-existent key gives no response"
        (let [key (uuid)]
-         (handle (str "prepend " key " 10 300 6 noreply\r\nzzzzzz")) => nil))
+         (handle (str "prepend " key " 10 300 6 noreply\r\nzzzzzz")) => ""))
 
  (fact "check and set with noreply and with correct cas value succeeds even though there is no response"
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
          (let [v (handle (str "gets " key))
                cas (nth (split v #"\s+") 4)]
-           (handle (str "cas " key " 10 1 6 " cas " noreply\r\nzzzzzz")) => nil
+           (handle (str "cas " key " 10 1 6 " cas " noreply\r\nzzzzzz")) => ""
            (handle (str "get " key)) => (str "VALUE " key " 10 6\r\nzzzzzz\r\nEND\r\n")))))
 
  (fact-group
@@ -376,19 +376,19 @@
   (fact "decrement with noreply returns no response but does work"
         (let [key (uuid)]
          (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
-         (handle (str "decr " key " 200 noreply")) => nil
+         (handle (str "decr " key " 200 noreply")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1034\r\nEND\r\n")))
 
   (fact "increment with noreply returns no response but does work"
         (let [key (uuid)]
          (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
-         (handle (str "incr " key " 1 noreply")) => nil
+         (handle (str "incr " key " 1 noreply")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1235\r\nEND\r\n")))
 
   (fact "when decrement changes the size of the response the right changed size is returned by get"
         (let [key (uuid)]
          (handle (str "set " key " 0 300 5\r\n10000")) => "STORED\r\n"
-         (handle (str "decr " key " 9999 noreply")) => nil
+         (handle (str "decr " key " 9999 noreply")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 1\r\n1\r\nEND\r\n")))
 
   (fact "when increment changes the size of the data the right changed size is returned by get"
@@ -413,7 +413,7 @@
        (let [key (uuid)]
          (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
          (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
-         (handle (str "touch " key " 1 noreply")) => nil
+         (handle (str "touch " key " 1 noreply")) => ""
          (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
          (Thread/sleep 1100)
          (handle (str "get " key)) => "END\r\n"))

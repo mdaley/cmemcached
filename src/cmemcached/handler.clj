@@ -193,11 +193,10 @@
   "ERROR\r\n")
 
 (defn handle-message
-  [message-bytes connectionid info]
+  [message connectionid info]
+  (println "HANDLE-MESSAGE" message)
   (try
-    (bytes/print-bytes message-bytes)
-    (let [message (bytes/to-string message-bytes)
-          lines (split message #"\r\n")
+    (let [lines (split message #"\r\n")
           cmd-and-args (when (first lines) (split (first lines) #"\s+"))
           cmd (first cmd-and-args)
           args (rest cmd-and-args)
@@ -206,3 +205,49 @@
     (catch Exception e
       (logging/error e)
       (str "SERVER_ERROR " (.getMessage e) "\r\n"))))
+
+(def connection-cmd (atom {}))
+
+(defn- starts-two-block-command?
+  [block]
+  (contains? #{"set" "cas" "add" "replace" "append" "prepend"} (first (split block #"\s+"))))
+
+(defn- clear-connection-cmd!
+  [connectionid]
+  (swap! connection-cmd
+         (fn [curr id]
+           (dissoc curr id))
+         connectionid))
+
+(defn- defer-command
+  [cmd connectionid]
+  (swap! connection-cmd
+         (fn [curr id cmd]
+           (assoc curr id cmd))
+         connectionid
+         cmd)
+  nil)
+
+(defn handle-block
+  [block connectionid info]
+  (if-let [deferred (get @connection-cmd connectionid)]
+    (do (clear-connection-cmd! connectionid)
+        (handle-message (str deferred "\r\n" block) connectionid info))
+    (if (starts-two-block-command? block)
+      (defer-command block connectionid)
+      (handle-message block connectionid info))))
+
+(defn handle-incoming
+  "Handle incoming information by separating into CRLF separated blocks and then recombining as necessary.
+  This allows all situations to be coped with, i.e. a single block at a time (command followed by separate data
+  block), a complete command (of one or two blocks) or several commands in one go (several of one of two blocks).
+  Different clients behave in different ways and using telnet manually would be one block at a time."
+  [incoming-bytes connectionid info]
+  (println "HANDLE-INCOMING")
+  (bytes/print-bytes incoming-bytes)
+  (let [incoming (bytes/to-string incoming-bytes)
+        blocks (drop-last (split incoming #"\r\n" -1))
+        blocks (if (empty? blocks)
+                 [""]
+                 blocks)]
+    (reduce str "" (map #(handle-block % connectionid info) blocks))))
