@@ -39,10 +39,11 @@
              key2 (uuid)
              value2 (uuid)
              key3 (uuid)
-             value3 (uuid)]
-            (spy/set (client) key1 300 value1)
-            (spy/set (client) key2 300 value2)
-            (spy/set (client) key3 300 value3)
-            (Thread/sleep 100)
-            (let [result (spy/get-multi (client) [key1 key2 key3])]
-              result => {key1 value1 key2 value2 key3 value3}))))
+             value3 (uuid)
+             c (client)]
+         (spy/set c key1 300 value1)
+         (spy/set c key2 300 value2)
+         (spy/set c key3 300 value3)
+         (Thread/sleep 500)
+         (let [result (spy/get-multi (client) [key1 key2 key3])]
+           result => {key1 value1 key2 value2 key3 value3}))))

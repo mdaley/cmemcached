@@ -19,12 +19,20 @@
  ;;         (println "VERSION:" version)
  ;;         version => truthy))
 
- (fact "simple value can be set and retrieved"
-       (let [key (uuid)
-             value (uuid)
+ (fact "simple values can be set and retrieved"
+       (let [key1 (uuid)
+             value1 (uuid)
+             key2 (uuid)
+             value2 (uuid)
+             key2 (uuid)
+             value2 (uuid)
              ttl 300
              response (wxm
-                        (xm/set key value ttl))
+                        (xm/set key1 value1 ttl))
+             response (wxm
+                        (xm/set key2 value2 ttl))
+             response (wxm
+                        (xm/set key2 value2 ttl))
              ;;response (spy/get (client) key)
              ]
-         (println "RESPONSE:" response))))
+         response => truthy)))
