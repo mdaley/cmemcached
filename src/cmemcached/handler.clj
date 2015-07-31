@@ -179,6 +179,15 @@
           "SERVER_ERROR invalid response from increment\r\n")))
     "CLIENT_ERROR\r\n"))
 
+(defmethod handle-command "touch"
+  [connectionid message data cmd]
+  (if-let [params (decode-num-params message)]
+    (with-hide-reply (:noreply params)
+      (if (= :touched (persist/touch (:key params) (* (:value params) 1000)))
+        "TOUCHED\r\n"
+        "NOT_FOUND\r\n"))
+    "CLIENT_ERROR\r\n"))
+
 (defmethod handle-command :default
   [_ _ _ _]
   "ERROR\r\n")

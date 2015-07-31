@@ -57,6 +57,16 @@
         :stored)
     :not-stored))
 
+(defn touch
+  [key ttl]
+  (if-let [existing (c/lookup @cache key)]
+    (do (swap! cache c/miss key {:value {:data (:data existing)
+                                         :flags (:flags existing)
+                                         :cas (unsigned-sixty-four-bit-random)}
+                                 :ttl ttl})
+        :touched)
+    :not-found))
+
 (defn wrapping-increment
   [value increment]
   (str (mod (+ (bigint value) increment) max-unsigned-long-plus-one)))

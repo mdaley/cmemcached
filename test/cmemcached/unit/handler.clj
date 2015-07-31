@@ -396,3 +396,31 @@
          (handle (str "set " key " 0 300 3\r\n999")) => "STORED\r\n"
          (handle (str "incr " key " 1")) => "1000\r\n"
          (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1000\r\nEND\r\n"))))
+
+(fact-group
+ :unit :touch
+
+ (fact "touch alters ttl"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (handle (str "touch " key " 1")) => "TOUCHED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (Thread/sleep 1100)
+         (handle (str "get " key)) => "END\r\n"))
+
+ (fact "touch alters ttl when noreply is specified"
+       (let [key (uuid)]
+         (handle (str "set " key " 0 300 8\r\nsomedata")) => "STORED\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (handle (str "touch " key " 1 noreply")) => nil
+         (handle (str "get " key)) => (str "VALUE " key " 0 8\r\nsomedata\r\nEND\r\n")
+         (Thread/sleep 1100)
+         (handle (str "get " key)) => "END\r\n"))
+
+ (fact "touch returns client error when the ttl value is not a number"
+        (handle (str "touch key A")) => "CLIENT_ERROR\r\n")
+
+  (fact "touch fails when stored value can't be found"
+        (let [key (uuid)]
+          (handle (str "touch " key " 1")) => "NOT_FOUND\r\n")))
