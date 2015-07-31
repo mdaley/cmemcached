@@ -371,4 +371,28 @@
 
   (fact "increment fails when stored value can't be found"
         (let [key (uuid)]
-         (handle (str "incr " key " 1")) => "NOT_FOUND\r\n")))
+          (handle (str "incr " key " 1")) => "NOT_FOUND\r\n"))
+
+  (fact "decrement with noreply returns no response but does work"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "decr " key " 200 noreply")) => nil
+         (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1034\r\nEND\r\n")))
+
+  (fact "increment with noreply returns no response but does work"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 4\r\n1234")) => "STORED\r\n"
+         (handle (str "incr " key " 1 noreply")) => nil
+         (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1235\r\nEND\r\n")))
+
+  (fact "when decrement changes the size of the response the right changed size is returned by get"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 5\r\n10000")) => "STORED\r\n"
+         (handle (str "decr " key " 9999 noreply")) => nil
+         (handle (str "get " key)) => (str "VALUE " key " 0 1\r\n1\r\nEND\r\n")))
+
+  (fact "when increment changes the size of the data the right changed size is returned by get"
+        (let [key (uuid)]
+         (handle (str "set " key " 0 300 3\r\n999")) => "STORED\r\n"
+         (handle (str "incr " key " 1")) => "1000\r\n"
+         (handle (str "get " key)) => (str "VALUE " key " 0 4\r\n1000\r\nEND\r\n"))))
