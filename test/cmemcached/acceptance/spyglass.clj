@@ -22,6 +22,7 @@
              value (uuid)
              ttl 300]
          (spy/set (client) key ttl value)
+         (Thread/sleep 100)
          (spy/get (client) key) => value))
 
  (fact "simple value can be set and retrieved but then it expires and can't be retrieved"
@@ -29,6 +30,7 @@
              value (uuid)
              ttl 1]
          (spy/set (client) key ttl value)
+         (Thread/sleep 100)
          (spy/get (client) key) => value
          (Thread/sleep 1100)
          (spy/get (client) key) => nil))

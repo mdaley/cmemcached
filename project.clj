@@ -12,12 +12,20 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [pittlcache "0.1.0"]]
 
-  :env {:port 11211
-        :default-ttl 2000}
-
   :main cmemcached.server
 
   :profiles {:dev {:dependencies [[clojurewerkz/spyglass "1.0.0"]
                                   [clj-xmemcached "0.2.6-RC1"]
                                   [midje "1.6.3"]]
-                   :plugins [[lein-midje "3.1.3"]]}})
+                   :plugins [[lein-midje "3.1.3"]]}
+             ;; Need separate profile for elasticache tests because it uses same net.spy.memcached
+             ;; namespaces as the library wrapped by spyglass. Running in the same profile would
+             ;; cause a conflict with potentially the wrong implementation being used for tests!
+             :elc {:dependencies [[com.amazonaws/elasticache-java-cluster-client "1.0.61.0"]
+                                  [midje "1.6.3"]]
+                   :plugins [[lein-midje "3.1.3"]]}}
+
+  :env {:port 11211
+        :default-ttl 2000
+        :elasticache-auto-discovery true}
+)

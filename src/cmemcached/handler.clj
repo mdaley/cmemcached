@@ -5,9 +5,12 @@
              [util :refer [max-unsigned-int max-unsigned-long]]]
             [byte-streams :as bytes]
             [clojure.string :refer [split trim]]
-            [clojure.tools.logging :as logging]))
+            [clojure.tools.logging :as logging]
+            [environ.core :refer [env]]))
 
-;; NOTE: exptime is in seconds if it is less than 30 days, otherwise it is a unix timestamp!! Need exact definition.
+(def ^:private elasticache-auto-discovery? (Boolean/valueOf (env :elasticache-auto-discovery "false")))
+
+;; TODO: exptime is in seconds if it is less than 30 days, otherwise it is a unix timestamp!! Need exact definition.
 
 (defn- decode-params
   [params cmd]
@@ -64,6 +67,11 @@
   `(if ~noreply
      (do ~@body nil)
      ~@body))
+
+(defn- elasticache-auto-discovery-response
+  []
+  (let [body (str "1\r\nlocalhost|127.0.0.1|" (env :port "11211") "\n")]
+    (str "CONFIG cluster 0 " (count body) "\r\n" body "\r\nEND\r\n")))
 
 (defmulti handle-command
   (fn [connectionid msg data cmd] cmd))
@@ -128,8 +136,12 @@
 
 (defmethod handle-command "get"
   [connectionid message _ _]
+  (println "HANDLE-COMMAND GET" (first message))
   (if (seq message)
-    (str (reduce (fn [s key] (str s (retrieve-item key false))) "" message) "END\r\n")
+    (if (and elasticache-auto-discovery?
+             (= "AmazonElastiCache:cluster" (first message)))
+      (elasticache-auto-discovery-response)
+      (str (reduce (fn [s key] (str s (retrieve-item key false))) "" message) "END\r\n"))
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "gets"
@@ -186,6 +198,16 @@
       (if (= :touched (persist/touch (:key params) (* (:value params) 1000)))
         "TOUCHED\r\n"
         "NOT_FOUND\r\n"))
+    "CLIENT_ERROR\r\n"))
+
+;; Extensions for AWS ElastiCache...
+(defmethod handle-command "config"
+  [connectionid message data cmd]
+  (if (and (seq message)
+           elasticache-auto-discovery?
+           (= "get" (first message))
+           (= "cluster" (second message)))
+    (elasticache-auto-discovery-response)
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command :default

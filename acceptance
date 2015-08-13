@@ -2,6 +2,7 @@
 
 # properties override
 export port="11211"
+export elasticache_auto_discovery="true"
 
 wait_for_port () {
     timeout=$1
@@ -34,7 +35,7 @@ trap handle_force_exit INT
 
 run_test () {
   timeout=$1
-  
+
   lein trampoline run&
   server_pid=$!
 
@@ -45,6 +46,12 @@ run_test () {
   then
     lein midje cmemcached.acceptance.*
     at_res=$?
+
+    if [ "$at_res" = "0" ]
+    then
+        lein with-profile elc midje cmemcached.elcacceptance.*
+        at_res=$?
+    fi
 
     kill_server
     exit $at_res

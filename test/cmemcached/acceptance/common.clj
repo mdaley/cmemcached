@@ -3,7 +3,7 @@
             [midje.sweet :refer :all])
   (:import [java.util UUID]))
 
-(def port (env :port 11211))
+(def port (Integer/valueOf (env :port 11211)))
 
 (defn uuid
   []

@@ -24,15 +24,28 @@
              value1 (uuid)
              key2 (uuid)
              value2 (uuid)
+             key3 (uuid)
+             value3 (uuid)
+             ttl 300]
+         (wxm (xm/set key1 value1 ttl))
+         (wxm (xm/set key2 value2 ttl))
+         (wxm (xm/set key3 value3 ttl))
+         (wxm (xm/get key1)) => value1
+         (wxm (xm/get key2)) => value2
+         (wxm (xm/get key3)) => value3))
+
+ (fact "simple values can be set and retrieved with the same client connection"
+       (let [key1 (uuid)
+             value1 (uuid)
              key2 (uuid)
              value2 (uuid)
-             ttl 300
-             response (wxm
-                        (xm/set key1 value1 ttl))
-             response (wxm
-                        (xm/set key2 value2 ttl))
-             response (wxm
-                        (xm/set key2 value2 ttl))
-             ;;response (spy/get (client) key)
-             ]
-         response => truthy)))
+             key3 (uuid)
+             value3 (uuid)
+             ttl 300]
+         (wxm
+          (xm/set key1 value1 ttl)
+          (xm/set key2 value2 ttl)
+          (xm/set key3 value3 ttl)
+          (xm/get key1) => value1
+          (xm/get key2) => value2
+          (xm/get key3) => value3))))
