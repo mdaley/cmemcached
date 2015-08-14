@@ -135,30 +135,29 @@
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "get"
-  [connectionid message _ _]
-  (println "HANDLE-COMMAND GET" (first message))
-  (if (seq message)
+  [connectionid msg _ _]
+  (if (seq msg)
     (if (and elasticache-auto-discovery?
-             (= "AmazonElastiCache:cluster" (first message)))
+             (= "AmazonElastiCache:cluster" (first msg)))
       (elasticache-auto-discovery-response)
-      (str (reduce (fn [s key] (str s (retrieve-item key false))) "" message) "END\r\n"))
+      (str (reduce (fn [s key] (str s (retrieve-item key false))) "" msg) "END\r\n"))
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "gets"
-  [connectionid message _ _]
-  (if (seq message)
-    (str (reduce (fn [s key] (str s (retrieve-item key true))) "" message) "END\r\n")))
+  [connectionid msg _ _]
+  (if (seq msg)
+    (str (reduce (fn [s key] (str s (retrieve-item key true))) "" msg) "END\r\n")))
 
 (defmethod handle-command "delete"
-  [connectionid message _ _]
-  (println "MESSAGE" message)
-  (if (= :deleted (persist/delete-item (first message)))
+  [connectionid msg _ _]
+  (println "MESSAGE" msg)
+  (if (= :deleted (persist/delete-item (first msg)))
       "DELETED\r\n"
       "NOT_FOUND\r\n"))
 
 (defmethod handle-command "cas"
-  [connectionid message data cmd]
-  (if-let [params (decode-params message cmd)]
+  [connectionid msg data cmd]
+  (if-let [params (decode-params msg cmd)]
     (with-hide-reply (:noreply params)
       (case (persist/check-and-set (:key params) (:flags params) (* (:exptime params) 1000) (:cas-unique params) data)
         :stored "STORED\r\n"
@@ -168,8 +167,8 @@
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "incr"
-  [connectionid message data cmd]
-  (if-let [params (decode-num-params message)]
+  [connectionid msg _ _]
+  (if-let [params (decode-num-params msg)]
     (with-hide-reply (:noreply params)
       (let [[result value] (persist/increment (:key params) (:value params))]
         (case result
@@ -180,8 +179,8 @@
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "decr"
-  [connectionid message data cmd]
-  (if-let [params (decode-num-params message)]
+  [connectionid msg _ _]
+  (if-let [params (decode-num-params msg)]
     (with-hide-reply (:noreply params)
       (let [[result value] (persist/decrement (:key params) (:value params))]
         (case result
@@ -192,8 +191,8 @@
     "CLIENT_ERROR\r\n"))
 
 (defmethod handle-command "touch"
-  [connectionid message data cmd]
-  (if-let [params (decode-num-params message)]
+  [connectionid msg _ _]
+  (if-let [params (decode-num-params msg)]
     (with-hide-reply (:noreply params)
       (if (= :touched (persist/touch (:key params) (* (:value params) 1000)))
         "TOUCHED\r\n"
@@ -202,23 +201,23 @@
 
 ;; Extensions for AWS ElastiCache...
 (defmethod handle-command "config"
-  [connectionid message data cmd]
-  (if (and (seq message)
+  [connectionid msg _ _]
+  (if (and (seq msg)
            elasticache-auto-discovery?
-           (= "get" (first message))
-           (= "cluster" (second message)))
+           (= "get" (first msg))
+           (= "cluster" (second msg)))
     (elasticache-auto-discovery-response)
-    "CLIENT_ERROR\r\n"))
+    "ERROR\r\n"))
 
 (defmethod handle-command :default
   [_ _ _ _]
   "ERROR\r\n")
 
 (defn handle-message
-  [message connectionid info]
-  (println "HANDLE-MESSAGE" message)
+  [msg connectionid info]
+  (println "HANDLE-MESSAGE" msg)
   (try
-    (let [lines (split message #"\r\n")
+    (let [lines (split msg #"\r\n")
           cmd-and-args (when (first lines) (split (first lines) #"\s+"))
           cmd (first cmd-and-args)
           args (rest cmd-and-args)
