@@ -1,5 +1,6 @@
 (ns cmemcached.persist
-  (:require [cmemcached.util :refer [unsigned-sixty-four-bit-random max-unsigned-long]]
+  (:require [cmemcached.util :refer [unsigned-sixty-four-bit-random max-unsigned-long
+                                     positive-signed-sixty-four-bit-random]]
             [clojure.core.cache :as c]
             [crypto.random :as rnd]
             [environ.core :refer [env]]
@@ -7,26 +8,41 @@
 
 (def ^:private max-unsigned-long-plus-one (inc max-unsigned-long))
 
+;; In the memcached code - code as spec :-) - CAS is an unsigned 64 bit integer. However, many
+;; client implementations limit the value to a Java long, a signed 64 bit integer (positive only).
+;; So, this setting ensures that CAS values fit into this constrained range. In the standard
+;; memcached implementation, successive CAS values increment from zero so there is unlikely to ever
+;; be a problem. However, this implementation has random CAS values and hence their range needs to
+;; be limited.
+(def ^:private limit-cas-to-unsigned-long (Boolean/valueOf (env :limit-cas-to-unsigned-long true)))
+
 (def ^:private default-ttl (env :default-ttl 60000))
 
 (def cache (atom (pc/pittl-cache-factory {} :ttl default-ttl)))
+
+(defn- random-cas
+  []
+  (if limit-cas-to-unsigned-long
+    (positive-signed-sixty-four-bit-random)
+    (unsigned-sixty-four-bit-random)))
 
 (defn set-item
   [key flags ttl data]
   (swap! cache c/miss key {:value {:data data
                                    :flags flags
-                                   :cas (unsigned-sixty-four-bit-random)}
+                                   :cas (random-cas)}
                            :ttl ttl}))
 
 (defn check-and-set
   [key flags ttl cas-unique data]
-  (println "cas-unique" cas-unique)
+  (println "CHECK-AND-SET" key flags ttl cas-unique data)
   (if-let [existing (c/lookup @cache key)]
     (if (= cas-unique (:cas existing))
       (do (swap! cache c/miss key {:value {:data data
                                            :flags flags
-                                           :cas (unsigned-sixty-four-bit-random)}
+                                           :cas (random-cas)}
                                    :ttl ttl})
+          (println "CAS STORED" (c/lookup @cache key))
           :stored)
       :exists)
     :not-found))
@@ -52,7 +68,7 @@
                                                  (str (:data existing) data)
                                                  (str data (:data existing)))
                                          :flags (:flags existing)
-                                         :cas (unsigned-sixty-four-bit-random)}
+                                         :cas (random-cas)}
                                  :ttl (:ttl existing)})
         :stored)
     :not-stored))
@@ -62,7 +78,7 @@
   (if-let [existing (c/lookup @cache key)]
     (do (swap! cache c/miss key {:value {:data (:data existing)
                                          :flags (:flags existing)
-                                         :cas (unsigned-sixty-four-bit-random)}
+                                         :cas (random-cas)}
                                  :ttl ttl})
         :touched)
     :not-found))
@@ -85,7 +101,7 @@
       (let [new-value (modifier-fn (:data existing) increment)]
           (swap! cache c/miss key {:value {:data new-value
                                            :flags (:flags existing)
-                                           :cas (unsigned-sixty-four-bit-random)}
+                                           :cas (random-cas)}
                                    :ttl (:ttl existing)})
         [:stored new-value])
       (catch NumberFormatException e

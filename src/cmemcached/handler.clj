@@ -271,4 +271,6 @@
         blocks (if (empty? blocks)
                  [""]
                  blocks)]
-    (reduce str "" (map #(handle-block % connectionid info) blocks))))
+    (let [response (reduce str "" (map #(handle-block % connectionid info) blocks))]
+      (println "RESPONSE" response)
+      response)))

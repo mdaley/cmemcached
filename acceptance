@@ -3,6 +3,7 @@
 # properties override
 export port="11211"
 export elasticache_auto_discovery="true"
+export limit_cas_to_unsigned_long="true"
 
 wait_for_port () {
     timeout=$1

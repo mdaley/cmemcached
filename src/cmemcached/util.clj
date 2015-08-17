@@ -3,6 +3,7 @@
 
 (def ^:const max-unsigned-int 4294967295N)
 (def ^:const max-unsigned-long 18446744073709551615N)
+(def ^:const top-unsigned-long-bit 9223372036854775808N)
 
 (defn unsigned-from-bytes
   "Turn a sequence of bigints representing byte values into the number they represent. For example
@@ -26,3 +27,7 @@
   (->> (rnd/bytes 8)
        (map unsigned-byte-value)
        (unsigned-from-bytes)))
+
+(defn positive-signed-sixty-four-bit-random
+  []
+  (mod (unsigned-sixty-four-bit-random) top-unsigned-long-bit))

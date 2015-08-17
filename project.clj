@@ -14,7 +14,9 @@
 
   :main cmemcached.server
 
-  :profiles {:dev {:dependencies [[clojurewerkz/spyglass "1.0.0"]
+  :profiles {:dev {:dependencies [[net.spy/spymemcached "2.12.0"]
+                                  [clojurewerkz/spyglass "1.1.0"
+                                   :exclusions [net.spy/spymemcached]]
                                   [clj-xmemcached "0.2.6-RC1"]
                                   [midje "1.6.3"]]
                    :plugins [[lein-midje "3.1.3"]]}
@@ -27,5 +29,6 @@
 
   :env {:port 11211
         :default-ttl 2000
+        :limit-cas-to-signed-long true
         :elasticache-auto-discovery true}
 )
